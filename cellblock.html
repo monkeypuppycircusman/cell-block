@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CELLBLOCK — Prison Kit</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=DM+Mono:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;1,300;1,400&display=swap');
+
+:root {
+  --void:  #03020a;
+  --deep:  #07050f;
+  --murk:  #0d0a1a;
+  --fog:   #151028;
+  --mist:  #1e1830;
+  --ecto:  #7affcc;
+  --ecto2: #a8ffe0;
+  --ecto3: #c8fff0;
+  --ecto-dim: #0a2a1e;
+  --soul:  #c060ff;
+  --soul2: #e090ff;
+  --bone:  #d4cfc0;
+  --bone2: #e8e4d8;
+  --blood: #ff2040;
+  --rust:  #c84020;
+  --text:  #8a8598;
+  --text2: #504860;
+  --text3: #2a2438;
+  --mono:  'DM Mono', monospace;
+  --serif: 'Cormorant Garamond', serif;
+  --goth:  'UnifrakturMaguntia', cursive;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: var(--void);
+  overflow: hidden;
+  font-family: var(--mono);
+  cursor: none;
+}
+
+#cursor {
+  position: fixed;
+  width: 20px; height: 20px;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+}
+#cursor svg { width: 100%; height: 100%; }
+
+#atmos {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#app {
+  position: relative;
+  width: 100vw; height: 100vh;
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+}
+
+/* ── HEADER ── */
+#hdr {
+  flex-shrink: 0;
+  padding: 18px 28px 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  border-bottom: 1px solid var(--text3);
+  background: linear-gradient(180deg, rgba(7,5,15,.95) 0%, transparent 100%);
+  position: relative; z-index: 2;
+}
+#logo {
+  font-family: var(--goth);
+  font-size: 36px;
+  color: var(--ecto);
+  text-shadow: 0 0 20px var(--ecto), 0 0 60px rgba(122,255,204,.3);
+  letter-spacing: 4px;
+  line-height: 1;
+}
+#logo-sub {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--text3);
+  text-transform: uppercase;
+}
+#hdr-stats {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 14px;
+}
+.hstat {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--text3);
+  text-transform: uppercase;
+}
+.hstat span { color: var(--text2); transition: color .1s; }
+.hstat span.lit { color: var(--ecto); text-shadow: 0 0 8px var(--ecto); }
+#power-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text3);
+  transition: all .3s;
+}
+#power-dot.on {
+  background: var(--ecto);
+  box-shadow: 0 0 8px var(--ecto), 0 0 20px rgba(122,255,204,.5);
+}
+
+/* ── MAIN ── */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+#main::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(122,255,204,.016) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(122,255,204,.016) 1px, transparent 1px);
+  background-size: 60px 50px;
+  pointer-events: none;
+}
+
+/* ── PAD GRID ── */
+#pad-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 0;
+  padding: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.pad {
+  position: relative;
+  border: 1px solid var(--text3);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background .06s;
+  user-select: none;
+  overflow: hidden;
+}
+
+.pad::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: var(--ecto);
+  opacity: 0;
+  transition: opacity .06s;
+  pointer-events: none;
+}
+.pad.hit::before { opacity: 0.07; }
+.pad.hit { border-color: var(--ecto); }
+
+.pad-icon {
+  font-size: 28px;
+  line-height: 1;
+  pointer-events: none;
+  transition: transform .06s, filter .06s;
+  filter: grayscale(1) brightness(0.5);
+}
+.pad.hit .pad-icon {
+  transform: scale(0.92);
+  filter: grayscale(0) brightness(1.1);
+}
+
+.pad-name {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--text2);
+  letter-spacing: .5px;
+  pointer-events: none;
+  transition: color .06s, text-shadow .06s;
+}
+.pad.hit .pad-name {
+  color: var(--ecto2);
+  text-shadow: 0 0 10px var(--ecto);
+}
+
+.pad-key {
+  font-family: var(--mono);
+  font-size: 7px;
+  letter-spacing: 2px;
+  color: var(--text3);
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.pad.hit .pad-key { color: var(--text2); }
+
+/* velocity flash ring */
+.pad-ring {
+  position: absolute;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  border: 1px solid var(--ecto);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.6);
+  transition: none;
+}
+.pad.hit .pad-ring {
+  animation: ringpulse .35s ease-out forwards;
+}
+@keyframes ringpulse {
+  0%   { opacity: .7; transform: scale(0.5); }
+  100% { opacity: 0;  transform: scale(2.2); }
+}
+
+/* vocal pads get soul color */
+.pad.vocal::before        { background: var(--soul); }
+.pad.vocal.hit            { border-color: var(--soul); }
+.pad.vocal .pad-ring      { border-color: var(--soul); }
+.pad.vocal.hit .pad-name  { color: var(--soul2); text-shadow: 0 0 10px var(--soul); }
+.pad.vocal.hit .pad-key   { color: var(--soul); }
+
+/* ── WAVEFORM ── */
+#wave-bar {
+  flex-shrink: 0;
+  height: 52px;
+  background: var(--deep);
+  border-top: 1px solid var(--text3);
+  position: relative; z-index: 2;
+  overflow: hidden;
+}
+#wave-canvas { width: 100%; height: 100%; display: block; }
+
+/* ── CONTROLS ── */
+#controls {
+  flex-shrink: 0;
+  background: linear-gradient(0deg, rgba(7,5,15,.98) 0%, transparent 100%);
+  border-top: 1px solid var(--text3);
+  padding: 10px 24px 14px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: relative; z-index: 2;
+  flex-wrap: wrap;
+}
+.cdiv { width: 1px; height: 32px; background: var(--text3); flex-shrink: 0; }
+.kg { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+canvas.knob { cursor: ns-resize; display: block; }
+.kl { font-family: var(--mono); font-size: 7px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text3); }
+.kv { font-family: var(--mono); font-size: 9px; color: var(--text2); min-width: 32px; text-align: center; }
+
+.mode-btn {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border: 1px solid var(--text3);
+  border-radius: 3px;
+  color: var(--text2);
+  background: transparent;
+  cursor: pointer;
+  transition: all .15s;
+}
+.mode-btn:hover { color: var(--text); border-color: var(--text2); }
+.mode-btn.active {
+  color: var(--ecto);
+  border-color: var(--ecto);
+  background: rgba(122,255,204,.06);
+  text-shadow: 0 0 8px var(--ecto);
+}
+
+#hit-display {
+  margin-left: auto;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+}
+#hit-name {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--ecto2);
+  text-shadow: 0 0 16px var(--ecto);
+  line-height: 1;
+  min-width: 120px;
+  text-align: right;
+  transition: color .05s;
+}
+#hit-sub {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text2);
+  letter-spacing: 1px;
+}
+
+::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+
+<div id="cursor">
+  <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="10" cy="10" r="7" fill="none" stroke="#7affcc" stroke-width="1" opacity=".6"/>
+    <circle cx="10" cy="10" r="2" fill="#7affcc" opacity=".8"/>
+    <line x1="10" y1="1" x2="10" y2="5" stroke="#7affcc" stroke-width=".8" opacity=".5"/>
+    <line x1="10" y1="15" x2="10" y2="19" stroke="#7affcc" stroke-width=".8" opacity=".5"/>
+    <line x1="1" y1="10" x2="5" y2="10" stroke="#7affcc" stroke-width=".8" opacity=".5"/>
+    <line x1="15" y1="10" x2="19" y2="10" stroke="#7affcc" stroke-width=".8" opacity=".5"/>
+  </svg>
+</div>
+
+<canvas id="atmos"></canvas>
+
+<div id="app">
+  <div id="hdr">
+    <div>
+      <div id="logo">Cellblock</div>
+      <div id="logo-sub">Prison Percussion Kit · Web Audio</div>
+    </div>
+    <div id="hdr-stats">
+      <div class="hstat">Hit <span id="hs-hit">—</span></div>
+      <div class="hstat">Vel <span id="hs-vel">—</span></div>
+      <div class="hstat">BPM <span id="hs-bpm">—</span></div>
+      <div id="power-dot"></div>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="pad-grid">
+      <!-- Row 1: body percussion -->
+      <div class="pad" data-sound="snap-l"    data-key="q"><div class="pad-ring"></div><div class="pad-icon">🤌</div><div class="pad-name">Snap L</div><div class="pad-key">Q</div></div>
+      <div class="pad" data-sound="snap-r"    data-key="w"><div class="pad-ring"></div><div class="pad-icon">👌</div><div class="pad-name">Snap R</div><div class="pad-key">W</div></div>
+      <div class="pad" data-sound="clap-dry"  data-key="e"><div class="pad-ring"></div><div class="pad-icon">👏</div><div class="pad-name">Clap</div><div class="pad-key">E</div></div>
+      <div class="pad" data-sound="clap-gang" data-key="r"><div class="pad-ring"></div><div class="pad-icon">🙌</div><div class="pad-name">Gang Clap</div><div class="pad-key">R</div></div>
+      <!-- Row 2: surfaces -->
+      <div class="pad" data-sound="pen-tap"   data-key="a"><div class="pad-ring"></div><div class="pad-icon">🖊</div><div class="pad-name">Pen Tap</div><div class="pad-key">A</div></div>
+      <div class="pad" data-sound="pen-roll"  data-key="s"><div class="pad-ring"></div><div class="pad-icon">✒</div><div class="pad-name">Pen Roll</div><div class="pad-key">S</div></div>
+      <div class="pad" data-sound="wood-knock" data-key="d"><div class="pad-ring"></div><div class="pad-icon">🚪</div><div class="pad-name">Wood Knock</div><div class="pad-key">D</div></div>
+      <div class="pad" data-sound="wood-slap" data-key="f"><div class="pad-ring"></div><div class="pad-icon">📋</div><div class="pad-name">Table Slap</div><div class="pad-key">F</div></div>
+      <!-- Row 3: vocal -->
+      <div class="pad vocal" data-sound="chant-hey"  data-key="z"><div class="pad-ring"></div><div class="pad-icon">🗣</div><div class="pad-name">Hey!</div><div class="pad-key">Z</div></div>
+      <div class="pad vocal" data-sound="chant-ho"   data-key="x"><div class="pad-ring"></div><div class="pad-icon">👄</div><div class="pad-name">Ho!</div><div class="pad-key">X</div></div>
+      <div class="pad vocal" data-sound="chant-uh"   data-key="c"><div class="pad-ring"></div><div class="pad-icon">😤</div><div class="pad-name">Uh!</div><div class="pad-key">C</div></div>
+      <div class="pad vocal" data-sound="chant-ohh"  data-key="v"><div class="pad-ring"></div><div class="pad-icon">🎤</div><div class="pad-name">Ohhhh</div><div class="pad-key">V</div></div>
+    </div>
+  </div>
+
+  <div id="wave-bar"><canvas id="wave-canvas"></canvas></div>
+
+  <div id="controls">
+    <div style="display:flex;gap:5px;flex-direction:column;">
+      <div style="font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:2px;">Room</div>
+      <div style="display:flex;gap:4px;">
+        <button class="mode-btn active" data-room="cell">Cell</button>
+        <button class="mode-btn" data-room="yard">Yard</button>
+        <button class="mode-btn" data-room="hall">Hall</button>
+      </div>
+    </div>
+
+    <div class="cdiv"></div>
+
+    <div class="kg">
+      <canvas class="knob" id="k-reverb"  width="42" height="42" data-min="0" data-max="1"   data-val="0.2"  data-color="#c060ff"></canvas>
+      <div class="kl">Reverb</div><div class="kv" id="v-reverb">0.20</div>
+    </div>
+    <div class="kg">
+      <canvas class="knob" id="k-body"    width="42" height="42" data-min="0" data-max="1"   data-val="0.5"  data-color="#7affcc"></canvas>
+      <div class="kl">Body</div><div class="kv" id="v-body">0.50</div>
+    </div>
+    <div class="kg">
+      <canvas class="knob" id="k-snap"    width="42" height="42" data-min="0" data-max="1"   data-val="0.65" data-color="#a8ffe0"></canvas>
+      <div class="kl">Snap</div><div class="kv" id="v-snap">0.65</div>
+    </div>
+    <div class="kg">
+      <canvas class="knob" id="k-vocal"   width="42" height="42" data-min="0" data-max="1"   data-val="0.7"  data-color="#e090ff"></canvas>
+      <div class="kl">Vocal</div><div class="kv" id="v-vocal">0.70</div>
+    </div>
+
+    <div class="cdiv"></div>
+
+    <div id="hit-display">
+      <div id="hit-name">—</div>
+      <div id="hit-sub">ready</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// CELLBLOCK — Prison Percussion Kit
+// ══════════════════════════════════════════════════
+
+let actx = null, convolver = null, analyser = null;
+
+function getCtx() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  if (!convolver) buildReverb();
+  if (!analyser) {
+    analyser = actx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.connect(actx.destination);
+  }
+  return actx;
+}
+
+const P = { reverb: 0.2, body: 0.5, snap: 0.65, vocal: 0.7, room: 'cell' };
+
+const ROOM_IR = { cell: { secs: 0.4, tail: 3.5 }, yard: { secs: 1.2, tail: 2.2 }, hall: { secs: 2.0, tail: 2.8 } };
+
+function buildReverb() {
+  const c = actx;
+  const rm = ROOM_IR[P.room];
+  const len = c.sampleRate * rm.secs;
+  const buf = c.createBuffer(2, len, c.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, rm.tail);
+  }
+  if (convolver) { try { convolver.disconnect(); } catch(e){} }
+  convolver = c.createConvolver();
+  convolver.buffer = buf;
+  convolver.connect(c.destination);
+}
+
+// ── BPM tap ──
+let tapTimes = [], lastBPM = 0;
+function registerTap() {
+  const now = performance.now();
+  tapTimes.push(now);
+  if (tapTimes.length > 6) tapTimes.shift();
+  if (tapTimes.length >= 2) {
+    const gaps = [];
+    for (let i = 1; i < tapTimes.length; i++) gaps.push(tapTimes[i] - tapTimes[i-1]);
+    const avg = gaps.reduce((a,b)=>a+b,0)/gaps.length;
+    lastBPM = Math.round(60000/avg);
+    document.getElementById('hs-bpm').textContent = lastBPM;
+    const el = document.getElementById('hs-bpm');
+    el.classList.add('lit'); clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('lit'),400);
+  }
+}
+
+// ────────────────────────────────────────────────────
+// SOUND SYNTHESIS
+// ────────────────────────────────────────────────────
+
+function noise(c, dur) {
+  const len = Math.floor(c.sampleRate * dur);
+  const buf = c.createBuffer(1, len, c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random()*2-1;
+  const src = c.createBufferSource(); src.buffer = buf; return src;
+}
+
+function route(c, src, gainVal) {
+  const g  = c.createGain(); g.gain.value = gainVal;
+  const dr = c.createGain(); dr.gain.value = 1 - P.reverb*0.85;
+  src.connect(g);
+  g.connect(dr); dr.connect(analyser);
+  g.connect(convolver);
+}
+
+function routeGain(c, gainNode) {
+  const dr = c.createGain(); dr.gain.value = 1 - P.reverb*0.85;
+  gainNode.connect(dr); dr.connect(analyser);
+  gainNode.connect(convolver);
+}
+
+// ── Finger snap ──
+function synthSnap(c, vel, side) {
+  const now = c.currentTime;
+  // Two layers: high transient click + body resonance
+  const transient = noise(c, 0.004);
+  const tg = c.createGain();
+  tg.gain.setValueAtTime(vel*1.2*P.snap, now);
+  tg.gain.exponentialRampToValueAtTime(0.001, now+0.018);
+
+  const hpf = c.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value = side==='l' ? 3800 : 4400;
+  transient.connect(hpf); hpf.connect(tg);
+
+  // Low thud from finger
+  const osc = c.createOscillator(); osc.type='triangle'; osc.frequency.value = side==='l' ? 420 : 480;
+  const og = c.createGain();
+  og.gain.setValueAtTime(vel*0.35*P.snap, now);
+  og.gain.exponentialRampToValueAtTime(0.001, now+0.045);
+  osc.connect(og);
+
+  const master = c.createGain(); master.gain.value = 1;
+  tg.connect(master); og.connect(master);
+  routeGain(c, master);
+
+  transient.start(now); transient.stop(now+0.02);
+  osc.start(now); osc.stop(now+0.06);
+}
+
+// ── Single clap ──
+function synthClap(c, vel) {
+  const now = c.currentTime;
+  // Layered noise bursts like a real clap
+  [0, 0.008, 0.016].forEach((offset, i) => {
+    const n = noise(c, 0.035);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, now+offset);
+    g.gain.linearRampToValueAtTime(vel*(0.9-i*0.15)*P.body, now+offset+0.003);
+    g.gain.exponentialRampToValueAtTime(0.001, now+offset+0.08);
+    const bpf = c.createBiquadFilter(); bpf.type='bandpass';
+    bpf.frequency.value = 1100 + i*200; bpf.Q.value = 0.8;
+    const hpf = c.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value = 800;
+    n.connect(bpf); bpf.connect(hpf); hpf.connect(g);
+    routeGain(c, g);
+    n.start(now+offset); n.stop(now+offset+0.1);
+  });
+}
+
+// ── Gang clap (multiple people, slightly offset) ──
+function synthGangClap(c, vel) {
+  const count = 4 + Math.floor(Math.random()*3);
+  for (let i = 0; i < count; i++) {
+    const offset = (Math.random()-0.5)*0.022;
+    setTimeout(() => {
+      if (actx) synthClap(actx, vel * (0.5 + Math.random()*0.5));
+    }, offset*1000 + i*2);
+  }
+}
+
+// ── Pen tap on table ──
+function synthPenTap(c, vel) {
+  const now = c.currentTime;
+  // Sharp plastic click + table resonance
+  const click = noise(c, 0.003);
+  const cg = c.createGain();
+  cg.gain.setValueAtTime(vel*0.9, now);
+  cg.gain.exponentialRampToValueAtTime(0.001, now+0.012);
+  const hpf = c.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=5000;
+  click.connect(hpf); hpf.connect(cg);
+
+  // Table resonance
+  const osc = c.createOscillator(); osc.type='triangle'; osc.frequency.value=280;
+  const og = c.createGain();
+  og.gain.setValueAtTime(vel*0.4, now+0.001);
+  og.gain.exponentialRampToValueAtTime(0.001, now+0.18);
+  osc.connect(og);
+
+  // Mid tap body
+  const osc2 = c.createOscillator(); osc2.type='sine'; osc2.frequency.value=900;
+  const og2 = c.createGain();
+  og2.gain.setValueAtTime(vel*0.25, now);
+  og2.gain.exponentialRampToValueAtTime(0.001, now+0.05);
+  osc2.connect(og2);
+
+  const master = c.createGain(); master.gain.value=1;
+  cg.connect(master); og.connect(master); og2.connect(master);
+  routeGain(c, master);
+
+  click.start(now); click.stop(now+0.015);
+  osc.start(now); osc.stop(now+0.2);
+  osc2.start(now); osc2.stop(now+0.08);
+}
+
+// ── Pen roll (rapid tapping) ──
+function synthPenRoll(c, vel) {
+  const steps = 5 + Math.floor(Math.random()*3);
+  for (let i = 0; i < steps; i++) {
+    const delay = i * 0.038 * (0.85+Math.random()*0.3);
+    setTimeout(() => {
+      if (actx) synthPenTap(actx, vel*(0.5+Math.random()*0.5));
+    }, delay*1000);
+  }
+}
+
+// ── Wood knock ──
+function synthWoodKnock(c, vel) {
+  const now = c.currentTime;
+  // Low woody thump
+  const osc = c.createOscillator(); osc.type='sine'; osc.frequency.value=160;
+  osc.frequency.setValueAtTime(220, now);
+  osc.frequency.exponentialRampToValueAtTime(90, now+0.06);
+  const og = c.createGain();
+  og.gain.setValueAtTime(vel*0.8*P.body, now);
+  og.gain.exponentialRampToValueAtTime(0.001, now+0.32);
+
+  // Attack transient
+  const n = noise(c, 0.008);
+  const ng = c.createGain();
+  ng.gain.setValueAtTime(vel*0.55, now);
+  ng.gain.exponentialRampToValueAtTime(0.001, now+0.025);
+  const lpf = c.createBiquadFilter(); lpf.type='lowpass'; lpf.frequency.value=2200;
+  n.connect(lpf); lpf.connect(ng);
+
+  // Mid knock
+  const osc2 = c.createOscillator(); osc2.type='triangle'; osc2.frequency.value=380;
+  const og2 = c.createGain();
+  og2.gain.setValueAtTime(vel*0.3, now);
+  og2.gain.exponentialRampToValueAtTime(0.001, now+0.12);
+  osc2.connect(og2);
+
+  const master = c.createGain(); master.gain.value=1;
+  og.connect(master); ng.connect(master); og2.connect(master);
+  routeGain(c, master);
+
+  osc.connect(og); n.start(now); n.stop(now+0.012);
+  osc.start(now); osc.stop(now+0.35);
+  osc2.start(now); osc2.stop(now+0.14);
+}
+
+// ── Table slap ──
+function synthTableSlap(c, vel) {
+  const now = c.currentTime;
+  // Low flat smack
+  const n = noise(c, 0.06);
+  const ng = c.createGain();
+  ng.gain.setValueAtTime(vel*0.85*P.body, now);
+  ng.gain.exponentialRampToValueAtTime(0.001, now+0.1);
+  const lpf = c.createBiquadFilter(); lpf.type='lowpass'; lpf.frequency.value=1400;
+  const hpf = c.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=180;
+  n.connect(hpf); hpf.connect(lpf); lpf.connect(ng);
+
+  const osc = c.createOscillator(); osc.type='sine'; osc.frequency.value=120;
+  const og = c.createGain();
+  og.gain.setValueAtTime(vel*0.6, now);
+  og.gain.exponentialRampToValueAtTime(0.001, now+0.22);
+  osc.connect(og);
+
+  const master = c.createGain(); master.gain.value=1;
+  ng.connect(master); og.connect(master);
+  routeGain(c, master);
+
+  n.start(now); n.stop(now+0.08);
+  osc.start(now); osc.stop(now+0.25);
+}
+
+// ── Vocal: Hey! ──
+function synthHey(c, vel) {
+  const now = c.currentTime;
+  const v = P.vocal * vel;
+  // Voiced "hey" — formant synthesis
+  const formants = [[800,1200,2800],[1200,900,1800]]; // open vowel then close
+  const dur = 0.18;
+
+  formants[0].forEach((freq, i) => {
+    const osc = c.createOscillator(); osc.type = i===0?'sawtooth':'triangle';
+    osc.frequency.value = 160 + i*20;
+    const bpf = c.createBiquadFilter(); bpf.type='bandpass'; bpf.frequency.value=freq; bpf.Q.value=8;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(v*[0.5,0.3,0.15][i], now+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, now+dur*(1.2-i*0.2));
+    osc.connect(bpf); bpf.connect(g); routeGain(c, g);
+    osc.start(now); osc.stop(now+dur+0.05);
+  });
+  // breath attack
+  const bn = noise(c, 0.01);
+  const bg = c.createGain(); bg.gain.setValueAtTime(v*0.15,now); bg.gain.exponentialRampToValueAtTime(0.001,now+0.01);
+  const bhpf = c.createBiquadFilter(); bhpf.type='highpass'; bhpf.frequency.value=3000;
+  bn.connect(bhpf); bhpf.connect(bg); routeGain(c, bg);
+  bn.start(now); bn.stop(now+0.012);
+}
+
+// ── Vocal: Ho! ──
+function synthHo(c, vel) {
+  const now = c.currentTime;
+  const v = P.vocal * vel;
+  const dur = 0.2;
+  [[500,900,2200],[600,800,2000]].forEach((formants, row) => {
+    formants.forEach((freq, i) => {
+      const osc = c.createOscillator(); osc.type='sawtooth';
+      osc.frequency.value = 140;
+      const bpf = c.createBiquadFilter(); bpf.type='bandpass'; bpf.frequency.value=freq; bpf.Q.value=9;
+      const g = c.createGain();
+      const t0 = now + row*0.08;
+      g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(v*[0.55,0.28,0.12][i],t0+0.025);
+      g.gain.exponentialRampToValueAtTime(0.001,t0+dur*(1.1-i*0.15));
+      osc.connect(bpf); bpf.connect(g); routeGain(c,g);
+      osc.start(t0); osc.stop(t0+dur+0.05);
+    });
+  });
+}
+
+// ── Vocal: Uh! (grunt) ──
+function synthUh(c, vel) {
+  const now = c.currentTime;
+  const v = P.vocal * vel;
+  // Short tight grunt
+  [[700,1200,2600]].forEach(formants => {
+    formants.forEach((freq, i) => {
+      const osc = c.createOscillator(); osc.type=i===0?'sawtooth':'triangle';
+      osc.frequency.value = 180 + i*15;
+      osc.frequency.exponentialRampToValueAtTime(130, now+0.1);
+      const bpf = c.createBiquadFilter(); bpf.type='bandpass'; bpf.frequency.value=freq; bpf.Q.value=7;
+      const g = c.createGain();
+      g.gain.setValueAtTime(v*[0.6,0.25,0.1][i],now);
+      g.gain.exponentialRampToValueAtTime(0.001,now+0.12);
+      osc.connect(bpf); bpf.connect(g); routeGain(c,g);
+      osc.start(now); osc.stop(now+0.15);
+    });
+  });
+  // glottal stop
+  const n = noise(c, 0.005);
+  const ng = c.createGain(); ng.gain.setValueAtTime(v*0.4, now); ng.gain.exponentialRampToValueAtTime(0.001,now+0.008);
+  const lpf = c.createBiquadFilter(); lpf.type='lowpass'; lpf.frequency.value=800;
+  n.connect(lpf); lpf.connect(ng); routeGain(c,ng);
+  n.start(now); n.stop(now+0.008);
+}
+
+// ── Vocal: Ohhhh (sustained crowd) ──
+function synthOhh(c, vel) {
+  const now = c.currentTime;
+  const v = P.vocal * vel;
+  const dur = 0.85;
+  const pitches = [140, 144, 148, 139]; // slight pitch cluster = crowd
+  pitches.forEach((pitch, pi) => {
+    const startOff = pi * 0.015;
+    [[550,1100,2400]].forEach(formants => {
+      formants.forEach((freq, i) => {
+        const osc = c.createOscillator(); osc.type='sawtooth';
+        osc.frequency.value = pitch;
+        const vib = c.createOscillator(); vib.frequency.value = 5+Math.random();
+        const vibG = c.createGain(); vibG.gain.value = 2.5;
+        vib.connect(vibG); vibG.connect(osc.frequency);
+        const bpf = c.createBiquadFilter(); bpf.type='bandpass'; bpf.frequency.value=freq; bpf.Q.value=8;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0,now+startOff);
+        g.gain.linearRampToValueAtTime(v*[0.5,0.22,0.08][i]/(pitches.length*0.7),now+startOff+0.06);
+        g.gain.setValueAtTime(v*[0.5,0.22,0.08][i]/(pitches.length*0.7),now+startOff+dur-0.12);
+        g.gain.exponentialRampToValueAtTime(0.001,now+startOff+dur);
+        osc.connect(bpf); bpf.connect(g); routeGain(c,g);
+        osc.start(now+startOff); osc.stop(now+startOff+dur+0.05);
+        vib.start(now+startOff); vib.stop(now+startOff+dur+0.05);
+      });
+    });
+  });
+}
+
+// ── Dispatch ──
+const SOUNDS = {
+  'snap-l':    (c,v) => synthSnap(c,v,'l'),
+  'snap-r':    (c,v) => synthSnap(c,v,'r'),
+  'clap-dry':  (c,v) => synthClap(c,v),
+  'clap-gang': (c,v) => synthGangClap(c,v),
+  'pen-tap':   (c,v) => synthPenTap(c,v),
+  'pen-roll':  (c,v) => synthPenRoll(c,v),
+  'wood-knock':(c,v) => synthWoodKnock(c,v),
+  'wood-slap': (c,v) => synthTableSlap(c,v),
+  'chant-hey': (c,v) => synthHey(c,v),
+  'chant-ho':  (c,v) => synthHo(c,v),
+  'chant-uh':  (c,v) => synthUh(c,v),
+  'chant-ohh': (c,v) => synthOhh(c,v),
+};
+
+const SOUND_NAMES = {
+  'snap-l':'Snap L','snap-r':'Snap R','clap-dry':'Clap','clap-gang':'Gang Clap',
+  'pen-tap':'Pen Tap','pen-roll':'Pen Roll','wood-knock':'Wood Knock','wood-slap':'Table Slap',
+  'chant-hey':'Hey!','chant-ho':'Ho!','chant-uh':'Uh!','chant-ohh':'Ohhhh',
+};
+
+function triggerPad(padEl, velocity) {
+  const sound = padEl.dataset.sound;
+  const c = getCtx();
+  if (SOUNDS[sound]) SOUNDS[sound](c, velocity);
+  registerTap();
+
+  padEl.classList.add('hit');
+  clearTimeout(padEl._t);
+  padEl._t = setTimeout(() => padEl.classList.remove('hit'), 120);
+
+  // Header display
+  document.getElementById('hit-name').textContent = SOUND_NAMES[sound] || sound;
+  document.getElementById('hit-sub').textContent = Math.round(velocity*127)+' vel';
+  document.getElementById('hs-hit').textContent = SOUND_NAMES[sound];
+  ['hs-hit','hs-vel'].forEach(id => {
+    const el = document.getElementById(id); el.classList.add('lit');
+    clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('lit'),300);
+  });
+  document.getElementById('hs-vel').textContent = Math.round(velocity*127);
+  const dot = document.getElementById('power-dot');
+  dot.classList.add('on'); clearTimeout(dot._t);
+  dot._t = setTimeout(()=>dot.classList.remove('on'),220);
+
+  // vocal pad changes hit-name color to soul
+  const isVocal = padEl.classList.contains('vocal');
+  const hn = document.getElementById('hit-name');
+  hn.style.color = isVocal ? 'var(--soul2)' : 'var(--ecto2)';
+  hn.style.textShadow = isVocal ? '0 0 16px var(--soul)' : '0 0 16px var(--ecto)';
+}
+
+// ── Pad interactions ──
+document.querySelectorAll('.pad').forEach(pad => {
+  pad.addEventListener('mousedown', e => {
+    e.preventDefault();
+    triggerPad(pad, 0.65 + Math.random()*0.35);
+  });
+  pad.addEventListener('touchstart', e => {
+    e.preventDefault();
+    triggerPad(pad, 0.65 + Math.random()*0.35);
+  }, { passive: false });
+});
+
+// ── Keyboard ──
+const KB = {};
+document.querySelectorAll('.pad').forEach(pad => {
+  KB[pad.dataset.key] = pad;
+});
+
+document.addEventListener('keydown', e => {
+  if (e.repeat || e.target.tagName==='INPUT') return;
+  const key = e.key.toLowerCase();
+  if (KB[key]) triggerPad(KB[key], 0.65+Math.random()*0.35);
+});
+
+// ── Room buttons ──
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    P.room = btn.dataset.room;
+    if (actx) buildReverb();
+  });
+});
+
+// ── Canvas knobs ──
+function setupKnobs() {
+  document.querySelectorAll('canvas.knob').forEach(canvas => {
+    const id=canvas.id, min=parseFloat(canvas.dataset.min), max=parseFloat(canvas.dataset.max);
+    let val=parseFloat(canvas.dataset.val);
+    const color=canvas.dataset.color||'#7affcc';
+    const valEl=document.getElementById('v-'+id.replace('k-',''));
+    function draw() {
+      const ctx=canvas.getContext('2d'), w=canvas.width, h=canvas.height, cx=w/2, cy=h/2, r=w*0.38;
+      ctx.clearRect(0,0,w,h);
+      const sA=Math.PI*0.75, eA=Math.PI*2.25, t=(val-min)/(max-min), cA=sA+t*(eA-sA);
+      ctx.beginPath(); ctx.arc(cx,cy,r,sA,eA); ctx.strokeStyle='#2a2438'; ctx.lineWidth=3; ctx.lineCap='round'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx,cy,r,sA,cA); ctx.strokeStyle=color; ctx.lineWidth=3; ctx.stroke();
+      const dx=cx+r*Math.cos(cA), dy=cy+r*Math.sin(cA);
+      ctx.beginPath(); ctx.arc(dx,dy,2.5,0,Math.PI*2); ctx.fillStyle=color; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2); ctx.fillStyle='#1e1830'; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx,cy,1.5,0,Math.PI*2); ctx.fillStyle=color; ctx.fill();
+    }
+    let dragY=null, dragVal=null;
+    canvas.addEventListener('mousedown', e=>{ dragY=e.clientY; dragVal=val; e.preventDefault(); });
+    document.addEventListener('mousemove', e=>{
+      if(dragY===null) return;
+      val=Math.max(min,Math.min(max,dragVal+(dragY-e.clientY)*(max-min)/120));
+      draw(); onKnob(id,val,valEl);
+    });
+    document.addEventListener('mouseup',()=>{ dragY=null; });
+    draw(); onKnob(id,val,valEl);
+  });
+}
+
+function onKnob(id,val,el) {
+  const map = {
+    'k-reverb': v=>{ P.reverb=v; el.textContent=v.toFixed(2); },
+    'k-body':   v=>{ P.body=v;   el.textContent=v.toFixed(2); },
+    'k-snap':   v=>{ P.snap=v;   el.textContent=v.toFixed(2); },
+    'k-vocal':  v=>{ P.vocal=v;  el.textContent=v.toFixed(2); },
+  };
+  if(map[id]) map[id](val);
+}
+
+// ── Waveform ──
+const waveCanvas=document.getElementById('wave-canvas');
+const wCtx=waveCanvas.getContext('2d');
+function resizeWave(){ waveCanvas.width=waveCanvas.offsetWidth; waveCanvas.height=waveCanvas.offsetHeight; }
+function drawWave(){
+  requestAnimationFrame(drawWave);
+  const W=waveCanvas.width, H=waveCanvas.height;
+  wCtx.clearRect(0,0,W,H);
+  if(!analyser) return;
+  const buf=new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteTimeDomainData(buf);
+  wCtx.strokeStyle='rgba(122,255,204,.5)'; wCtx.lineWidth=1;
+  wCtx.shadowColor='#7affcc'; wCtx.shadowBlur=4;
+  wCtx.beginPath();
+  const step=W/buf.length;
+  for(let i=0;i<buf.length;i++){
+    const x=i*step, y=(buf[i]/128-1)*(H*0.42)+H/2;
+    i===0?wCtx.moveTo(x,y):wCtx.lineTo(x,y);
+  }
+  wCtx.stroke(); wCtx.shadowBlur=0;
+}
+
+// ── Atmosphere ──
+const atmosCanvas=document.getElementById('atmos');
+const aCtx=atmosCanvas.getContext('2d');
+let particles=[];
+function initAtmos(){
+  atmosCanvas.width=window.innerWidth; atmosCanvas.height=window.innerHeight;
+  particles=Array.from({length:28},()=>({
+    x:Math.random()*atmosCanvas.width, y:Math.random()*atmosCanvas.height,
+    r:Math.random()*1.2+0.3, sp:Math.random()*0.15+0.04,
+    o:Math.random()*0.12+0.02, t:Math.random()*Math.PI*2,
+  }));
+}
+function drawAtmos(){
+  requestAnimationFrame(drawAtmos);
+  aCtx.clearRect(0,0,atmosCanvas.width,atmosCanvas.height);
+  particles.forEach(p=>{
+    p.t+=p.sp*0.016; p.x+=Math.sin(p.t*0.7)*0.3; p.y-=p.sp*0.4;
+    if(p.y<-4) p.y=atmosCanvas.height+4;
+    aCtx.beginPath(); aCtx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    aCtx.fillStyle=`rgba(122,255,204,${p.o})`; aCtx.fill();
+  });
+}
+
+// ── Cursor ──
+const cursor=document.getElementById('cursor');
+document.addEventListener('mousemove',e=>{ cursor.style.left=e.clientX+'px'; cursor.style.top=e.clientY+'px'; });
+
+window.addEventListener('resize',()=>{ resizeWave(); initAtmos(); });
+
+setupKnobs(); resizeWave(); initAtmos(); drawAtmos(); drawWave();
+</script>
+</body>
+</html>
